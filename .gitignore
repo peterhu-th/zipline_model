@@ -3,3 +3,6 @@ method.md
 
 .agents
 __pycache__
+
+*.csv
+*.png
