@@ -1,0 +1,2 @@
+﻿reached_terminal,stalled,v_max,x_vmax,v_terminal,travel_time,max_accel,max_decel,T_max,sag_max,feasible,message,model,mass,xb_ratio,FB
+False,True,16.967508035041885,349.50438945507483,,43.4358293817288,0.9880080413152055,1.93214647532264,41428.70019197439,34.17893821954041,False,A termination event occurred.,quasi_static_moving_load,80.0,1.1,0.0

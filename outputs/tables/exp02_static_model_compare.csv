@@ -1,0 +1,3 @@
+﻿model,success,T_max,sag_max
+analytic_catenary,True,18522.027434264848,29.367174958664283
+energy_minimization,True,35280.462021600826,33.78599387644521

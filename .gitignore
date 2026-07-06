@@ -1,0 +1,5 @@
+*.pdf
+method.md
+
+.agents
+__pycache__
