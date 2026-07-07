@@ -1,8 +1,19 @@
+# Local agent state
+.agents/
+
+# Python cache
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Generated experiment outputs
+outputs/
+
+# Paper sources, compiled PDFs, and LaTeX/MiKTeX build artifacts
+paper/
 *.pdf
+*.docx
+
+# Non-code documents kept local
 method.md
-
-.agents
-__pycache__
-
-*.csv
-*.png
+question.md

@@ -11,6 +11,8 @@ from config.params import CableParams, PhysicalConstants, SolverParams
 
 @dataclass
 class CableShape:
+    """钢缆平衡形态及由该形态导出的张力信息。"""
+
     x: np.ndarray
     y: np.ndarray
     tension: np.ndarray
@@ -34,6 +36,8 @@ def make_cable_params(base: CableParams, **updates: float | int | bool) -> Cable
 
 
 def initial_shape(cable: CableParams, sag_ratio: float = 0.04) -> tuple[np.ndarray, np.ndarray]:
+    """构造优化初值：两端弦线叠加一个向下的正弦垂度。"""
+
     x = np.linspace(0.0, cable.W, cable.N + 1)
     chord = cable.H * (1.0 - x / cable.W)
     sag = sag_ratio * cable.W * np.sin(np.pi * x / cable.W)
@@ -42,12 +46,16 @@ def initial_shape(cable: CableParams, sag_ratio: float = 0.04) -> tuple[np.ndarr
 
 
 def _pack(x: np.ndarray, y: np.ndarray, fixed_x: bool) -> np.ndarray:
+    """把节点坐标打包成优化变量。fixed_x=True 时只优化 y。"""
+
     if fixed_x:
         return y[1:-1].copy()
     return np.column_stack([x[1:-1], y[1:-1]]).ravel()
 
 
 def _unpack(q: np.ndarray, cable: CableParams) -> tuple[np.ndarray, np.ndarray]:
+    """把优化变量还原为完整节点坐标，并补上两端固定点。"""
+
     if cable.fixed_x:
         x = np.linspace(0.0, cable.W, cable.N + 1)
         y = np.empty(cable.N + 1)
@@ -72,6 +80,13 @@ def total_potential_energy(
     rider_mass: Optional[float] = None,
     rider_x: Optional[float] = None,
 ) -> float:
+    """总势能函数。
+
+    钢缆自重按未伸长单元质量 R*l0 计算；弹性势能只统计拉伸量，
+    即钢缆只受拉不受压。若给定 rider_mass/rider_x，则额外加入人员
+    集中载荷的重力势能。
+    """
+
     x, y = _unpack(q, cable)
     dx = np.diff(x)
     if np.any(dx <= 0.0):
@@ -90,6 +105,8 @@ def total_potential_energy(
 
 
 def compute_tension(x: np.ndarray, y: np.ndarray, cable: CableParams) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """根据单元伸长量计算张力分布。"""
+
     lengths = np.hypot(np.diff(x), np.diff(y))
     l0 = np.full(cable.N, cable.L / cable.N)
     strain = (lengths - l0) / l0
@@ -105,6 +122,8 @@ def solve_cable_shape(
     rider_x: Optional[float] = None,
     initial: Optional[CableShape] = None,
 ) -> CableShape:
+    """求解空置或载人静止状态下的钢缆平衡形态。"""
+
     const = const or PhysicalConstants()
     solver = solver or SolverParams()
 
@@ -118,9 +137,11 @@ def solve_cable_shape(
     bounds = None
     constraints = []
     if cable.fixed_x:
+        # 快速模型：水平节点等距，只优化高度，适合批量扫描。
         y_pad = max(cable.W, abs(cable.H), cable.L)
         bounds = [(min(0.0, cable.H) - y_pad, max(0.0, cable.H) + y_pad)] * (cable.N - 1)
     else:
+        # 精度验证模型：同时优化中间节点 x/y，并用不等式约束保持节点顺序。
         y_pad = max(cable.W, abs(cable.H), cable.L)
         bounds = []
         eps = 1e-5
@@ -155,4 +176,3 @@ def solve_cable_shape(
         objective=float(result.fun) if result.fun is not None else float("nan"),
         message=str(result.message),
     )
-

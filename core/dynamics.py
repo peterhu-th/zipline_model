@@ -12,6 +12,8 @@ from core.geometry import curvature, interp_y, max_sag, slope
 
 @dataclass
 class SimulationResult:
+    """一次滑行动力学仿真的汇总结果。"""
+
     t: np.ndarray
     x: np.ndarray
     v: np.ndarray
@@ -31,6 +33,12 @@ class SimulationResult:
 
 
 class ShapeCache:
+    """准静态移动载荷缓存。
+
+    动力学积分过程中，每到一个位置都要解一次载人静力索形。这里把位置按
+    cache_dx 分桶，并用上一次索形 warm start，避免重复求解导致计算过慢。
+    """
+
     def __init__(self, cable: CableParams, const: PhysicalConstants, solver: SolverParams, mass: float):
         self.cable = cable
         self.const = const
@@ -67,6 +75,12 @@ def local_acceleration(
     xb_ratio: float,
     FB: float,
 ) -> float:
+    """计算给定位置和速度下的切向加速度。
+
+    驱动力为重力切向分量，阻力包括库仑摩擦、二次空气阻力、等效线性阻尼
+    和缓冲区内的恒定附加摩擦力。
+    """
+
     yx = slope(shape, x)
     kappa = curvature(shape, x)
     denom = np.sqrt(1.0 + yx * yx)
@@ -93,12 +107,15 @@ def simulate_motion(
     kd: float | None = None,
     ce: float | None = None,
 ) -> SimulationResult:
+    """积分人员沿钢缆滑行的 x(t), v(t)。"""
+
     mu = resistance.mu_default if mu is None else mu
     kd = resistance.kd_default if kd is None else kd
     ce = resistance.ce_default if ce is None else ce
     cache = ShapeCache(cable, const, solver, mass)
 
     def rhs(_t: float, z: np.ndarray) -> np.ndarray:
+        # 使用当前位置对应的准静态索形计算局部坡度和切向加速度。
         x = float(np.clip(z[0], 0.0, cable.W))
         v = max(float(z[1]), 0.0)
         shape = cache.get(x)
@@ -108,12 +125,14 @@ def simulate_motion(
         return np.array([dxdt, dvdt])
 
     def terminal_event(_t: float, z: np.ndarray) -> float:
+        # 到达终点即停止积分。
         return float(z[0] - cable.W)
 
     terminal_event.terminal = True
     terminal_event.direction = 1
 
     def stall_event(_t: float, z: np.ndarray) -> float:
+        # 速度接近 0 且尚未到达终点时，判定为中途滞留。
         x = float(np.clip(z[0], 0.0, cable.W))
         if x < 1.0 or x >= cable.W - 1e-6:
             return 1.0
