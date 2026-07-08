@@ -1,13 +1,12 @@
 from __future__ import annotations
-
 import pandas as pd
-
 from config.params import Params
 from core.energy_cable import solve_cable_shape
 from core.geometry import interp_y, max_sag
 
 
 def run(params: Params, mass: float = 80.0) -> pd.DataFrame:
+    """载人位置对索形和张力的影响"""
     rows = []
     initial = None
     for ratio in params.grid.rider_pos_ratio_grid:
@@ -30,4 +29,3 @@ def run(params: Params, mass: float = 80.0) -> pd.DataFrame:
 
 if __name__ == "__main__":
     print(run(Params()).to_string(index=False))
-

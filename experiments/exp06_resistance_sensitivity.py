@@ -1,13 +1,12 @@
 from __future__ import annotations
-
 import pandas as pd
-
 from config.params import Params
 from core.braking import result_row
 from core.dynamics import simulate_motion
 
 
 def run(params: Params, mass: float = 80.0) -> pd.DataFrame:
+    """阻力参数敏感性"""
     rows = []
     for mu in params.resistance.mu_grid:
         for kd in params.resistance.kd_grid:
@@ -33,4 +32,3 @@ def run(params: Params, mass: float = 80.0) -> pd.DataFrame:
 
 if __name__ == "__main__":
     print(run(Params()).head().to_string(index=False))
-
