@@ -13,6 +13,7 @@ class SimulationResult:
 
     t: np.ndarray
     x: np.ndarray
+    s: np.ndarray
     v: np.ndarray
     accel: np.ndarray
     reached_terminal: bool
@@ -58,6 +59,23 @@ class ShapeCache:
             )
             self.cache[key] = self.last_shape
         return self.cache[key]
+
+
+def arc_displacement(reference_shape: CableShape, x: np.ndarray) -> np.ndarray:
+    """沿参考索形计算弧长位移 s(x)"""
+
+    if x.size == 0:
+        return np.array([])
+    values = np.zeros_like(x, dtype=float)
+    for i in range(1, x.size):
+        x0 = float(x[i - 1])
+        x1 = float(x[i])
+        y0 = slope(reference_shape, x0)
+        y1 = slope(reference_shape, x1)
+        ds_dx0 = np.sqrt(1.0 + y0 * y0)
+        ds_dx1 = np.sqrt(1.0 + y1 * y1)
+        values[i] = values[i - 1] + 0.5 * (ds_dx0 + ds_dx1) * max(0.0, x1 - x0)
+    return values
 
 
 def local_acceleration(
@@ -110,6 +128,7 @@ def simulate_motion(
     kd = resistance.kd_default if kd is None else kd
     ce = resistance.ce_default if ce is None else ce
     cache = ShapeCache(cable, const, solver, mass)
+    reference_shape = solve_cable_shape(cable, const, solver)
 
     return _simulate_with_shape_provider(
         cable,
@@ -126,6 +145,7 @@ def simulate_motion(
         kd,
         ce,
         cache.get,
+        reference_shape,
     )
 
 
@@ -165,6 +185,7 @@ def simulate_motion_fixed_shape(
         kd,
         ce,
         lambda _x: shape,
+        shape,
     )
 
 
@@ -183,6 +204,7 @@ def _simulate_with_shape_provider(
     kd: float,
     ce: float,
     shape_at,
+    reference_shape: CableShape,
 ) -> SimulationResult:
     """按给定索形提供器执行统一动力学积分"""
 
@@ -207,6 +229,11 @@ def _simulate_with_shape_provider(
         x = float(np.clip(z[0], 0.0, cable.W))
         if x < 1.0 or x >= cable.W - 1e-6:
             return 1.0
+        v = max(float(z[1]), 0.0)
+        shape = shape_at(x)
+        accel = local_acceleration(x, v, shape, cable, const, mass, mu, kd, ce, xb_ratio, FB)
+        if accel > 1e-5:
+            return 1.0
         return float(z[1] - 1e-3)
 
     stall_event.terminal = True
@@ -222,6 +249,7 @@ def _simulate_with_shape_provider(
         events=[terminal_event, stall_event],
     )
     x = np.clip(sol.y[0], 0.0, cable.W)
+    s = arc_displacement(reference_shape, x)
     v = np.maximum(sol.y[1], 0.0)
     acc = np.empty_like(v)
     T_max = 0.0
@@ -233,17 +261,21 @@ def _simulate_with_shape_provider(
         sag_max_value = max(sag_max_value, max_sag(shape, cable))
 
     reached = bool(sol.t_events[0].size)
-    stalled = (bool(sol.t_events[1].size) and not reached) or (not reached and x[-1] < cable.W and v[-1] <= 1e-2)
+    last_accel = float(acc[-1]) if acc.size else 0.0
+    stalled = (bool(sol.t_events[1].size) and not reached) or (
+        not reached and x[-1] < cable.W and v[-1] <= 1e-2 and last_accel <= 1e-5
+    )
     imax = int(np.argmax(v)) if v.size else 0
     v_terminal = float(v[-1]) if reached else float("nan")
     max_decel = float(max(0.0, -np.min(acc))) if acc.size else 0.0
     max_accel = float(np.max(acc)) if acc.size else 0.0
-    arc_length = float(np.trapz(v, sol.t)) if sol.t.size > 1 else 0.0
+    arc_length = float(s[-1]) if s.size else 0.0
     avg_speed = arc_length / float(sol.t[-1]) if sol.t.size and sol.t[-1] > 0.0 else float("nan")
     feasible = reached and not stalled and v_terminal <= v_limit and max_decel <= a_safe
     return SimulationResult(
         t=sol.t,
         x=x,
+        s=s,
         v=v,
         accel=acc,
         reached_terminal=reached,

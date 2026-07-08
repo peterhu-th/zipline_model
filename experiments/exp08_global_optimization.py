@@ -1,10 +1,19 @@
 from __future__ import annotations
 from dataclasses import replace
+from pathlib import Path
+import sys
+
+ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
 import numpy as np
 import pandas as pd
 from config.params import Params, cable_length_from_eta
 from core.braking import check_braking_feasibility
 from core.dynamics import simulate_motion
+from utils.experiment_runner import run_experiment_outputs
+from utils.plotting import plot_global_feasible_region
 
 
 def _mass_value(data: dict[float, object], mass: float, attr: str) -> float:
@@ -16,12 +25,20 @@ def _mass_value(data: dict[float, object], mass: float, attr: str) -> float:
 def _scan(params: Params, H_grid, eta_grid, xb_grid, FB_grid, scan_stage: str) -> pd.DataFrame:
     """执行一轮参数扫描"""
     rows = []
+    total = len(H_grid) * len(eta_grid) * len(xb_grid) * len(FB_grid)
+    done = 0
+    print(f"[扫描] {scan_stage} 阶段，参数组合数量：{total}")
     for H in H_grid:
         for eta in eta_grid:
             L = cable_length_from_eta(params.cable.W, float(H), float(eta))
             cable = replace(params.cable, H=float(H), L=L)
             for xb_ratio in xb_grid:
                 for FB in FB_grid:
+                    done += 1
+                    print(
+                        f"[进度] {scan_stage} {done}/{total}，"
+                        f"H={float(H):.2f}，eta={float(eta):.4f}，xb/W={float(xb_ratio):.2f}，FB={float(FB):.0f}N"
+                    )
                     sims: dict[float, object] = {}
                     feasible = True
                     for mass in params.rider.mass_grid:
@@ -105,4 +122,9 @@ def run(params: Params, limit_per_axis: int | None = None) -> pd.DataFrame:
 
 
 if __name__ == "__main__":
-    print(run(Params(), limit_per_axis=2).to_string(index=False))
+    run_experiment_outputs(
+        "综合优化扫描",
+        "exp08_global_optimization.csv",
+        lambda: run(Params(), limit_per_axis=2),
+        (plot_global_feasible_region,),
+    )

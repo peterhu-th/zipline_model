@@ -25,7 +25,7 @@ def check_braking_feasibility(
 
 def result_row(sim: SimulationResult, **context: float) -> dict[str, float | bool | str]:
     """构建数据行"""
-    row = {k: v for k, v in asdict(sim).items() if k not in {"t", "x", "v", "accel"}}
+    row = {k: v for k, v in asdict(sim).items() if k not in {"t", "x", "s", "v", "accel"}}
     row.update(context)
     return row
 
@@ -35,8 +35,13 @@ def scan_braking_region(params: Params, mass: float, xb_ratios=None, FB_values=N
     xb_ratios = params.brake.xb_ratio_grid if xb_ratios is None else xb_ratios
     FB_values = params.brake.FB_grid if FB_values is None else FB_values
     rows = []
+    total = len(xb_ratios) * len(FB_values)
+    done = 0
+    print(f"[扫描] 质量 {mass:g}kg，缓冲组合数量：{total}")
     for xb_ratio in xb_ratios:
         for FB in FB_values:
+            done += 1
+            print(f"[进度] 质量 {mass:g}kg，{done}/{total}，xb/W={float(xb_ratio):.2f}，FB={float(FB):.0f}N")
             sim = simulate_motion(
                 params.cable,
                 params.const,

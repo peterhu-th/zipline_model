@@ -1,7 +1,16 @@
 from __future__ import annotations
+from pathlib import Path
+import sys
+
+ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
 import pandas as pd
 from config.params import Params
 from core.sensitivity import tension_sensitivity_H
+from utils.experiment_runner import run_experiment_outputs
+from utils.plotting import plot_H_Tmax_curve, plot_H_delta_max_curve
 
 
 def run(params: Params) -> pd.DataFrame:
@@ -13,4 +22,9 @@ def run(params: Params) -> pd.DataFrame:
 
 
 if __name__ == "__main__":
-    print(run(Params()).to_string(index=False))
+    run_experiment_outputs(
+        "高度差敏感性实验",
+        "exp03_height_tension.csv",
+        lambda: run(Params()),
+        (plot_H_Tmax_curve, plot_H_delta_max_curve),
+    )

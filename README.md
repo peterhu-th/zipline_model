@@ -95,13 +95,13 @@ matplotlib
 运行快速实验，生成问题一和问题二的基础结果表：
 
 ```powershell
-C:\ProgramData\miniconda3\envs\cable\python.exe main.py quick
+python main.py quick
 ```
 
 运行第三问综合优化烟测：
 
 ```powershell
-C:\ProgramData\miniconda3\envs\cable\python.exe main.py global --limit-per-axis 1
+python main.py global --limit-per-axis 1
 ```
 
 如果需要扩大搜索范围，可提高 `--limit-per-axis` 或直接运行完整网格：

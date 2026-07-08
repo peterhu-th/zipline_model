@@ -1,8 +1,16 @@
 from __future__ import annotations
+from pathlib import Path
+import sys
+
+ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
 import pandas as pd
 from config.params import Params
 from core.energy_cable import solve_cable_shape
 from core.geometry import interp_y, max_sag
+from utils.experiment_runner import run_experiment_outputs
 
 
 def run(params: Params, mass: float = 80.0) -> pd.DataFrame:
@@ -28,4 +36,4 @@ def run(params: Params, mass: float = 80.0) -> pd.DataFrame:
 
 
 if __name__ == "__main__":
-    print(run(Params()).to_string(index=False))
+    run_experiment_outputs("载人位置影响实验", "exp04_rider_position.csv", lambda: run(Params()))

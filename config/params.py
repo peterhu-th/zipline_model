@@ -56,12 +56,12 @@ class RiderParams:
 class ResistanceParams:
     """滑动摩擦、空气阻力和等效阻尼参数"""
 
-    mu_default: float = 0.02                                # 滑动摩擦系数默认值
-    kd_default: float = 0.10                                # 二次空气阻力系数默认值
-    ce_default: float = 2.0                                 # 线性阻尼系数默认值
-    mu_grid: tuple[float, ...] = (0.01, 0.02, 0.03, 0.05)
-    kd_grid: tuple[float, ...] = (0.05, 0.10, 0.20, 0.30)
-    ce_grid: tuple[float, ...] = (0.0, 2.0, 5.0, 10.0)
+    mu_default: float = 0.003                               # 滑动摩擦系数默认值
+    kd_default: float = 0.01                                # 二次空气阻力系数默认值
+    ce_default: float = 0.10                                # 线性阻尼系数默认值
+    mu_grid: tuple[float, ...] = (0.0, 0.002, 0.003, 0.005, 0.01)
+    kd_grid: tuple[float, ...] = (0.0, 0.005, 0.01, 0.02, 0.05)
+    ce_grid: tuple[float, ...] = (0.0, 0.10, 0.50, 1.0, 2.0)
 
 
 @dataclass(frozen=True)

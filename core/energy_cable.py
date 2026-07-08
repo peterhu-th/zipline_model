@@ -4,6 +4,7 @@ from typing import Optional
 import numpy as np
 from scipy.optimize import minimize
 from config.params import CableParams, PhysicalConstants, SolverParams
+from core.baseline_models import solve_analytic_catenary
 
 
 @dataclass
@@ -38,6 +39,10 @@ def initial_shape(cable: CableParams, sag_ratio: float = 0.04) -> tuple[np.ndarr
     """构造优化初值：两端弦线叠加一个向下的正弦垂度"""
 
     x = np.linspace(0.0, cable.W, cable.N + 1)
+    analytic = solve_analytic_catenary(cable)
+    if analytic.success:
+        return x, np.asarray(analytic.y(x), dtype=float)
+
     chord = cable.H * (1.0 - x / cable.W)
     sag = sag_ratio * cable.W * np.sin(np.pi * x / cable.W)
     y = chord - sag
@@ -161,7 +166,7 @@ def solve_cable_shape(
         method=solver.optimizer_method,
         bounds=bounds,
         constraints=constraints,
-        options={"maxiter": solver.max_iter, "ftol": solver.ftol, "disp": False},
+        options={"maxiter": max(solver.max_iter, 5 * cable.N), "ftol": solver.ftol, "disp": False},
     )
     x, y = _unpack(result.x if result.x is not None else q0, cable)
     tension, lengths, l0 = compute_tension(x, y, cable)
