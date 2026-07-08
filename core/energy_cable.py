@@ -1,17 +1,14 @@
 from __future__ import annotations
-
 from dataclasses import dataclass, replace
 from typing import Optional
-
 import numpy as np
 from scipy.optimize import minimize
-
 from config.params import CableParams, PhysicalConstants, SolverParams
 
 
 @dataclass
 class CableShape:
-    """钢缆平衡形态及由该形态导出的张力信息。"""
+    """钢缆平衡形态及由该形态导出的张力信息"""
 
     x: np.ndarray
     y: np.ndarray
@@ -32,11 +29,13 @@ class CableShape:
 
 
 def make_cable_params(base: CableParams, **updates: float | int | bool) -> CableParams:
+    """快速迭代函数"""
+
     return replace(base, **updates)
 
 
 def initial_shape(cable: CableParams, sag_ratio: float = 0.04) -> tuple[np.ndarray, np.ndarray]:
-    """构造优化初值：两端弦线叠加一个向下的正弦垂度。"""
+    """构造优化初值：两端弦线叠加一个向下的正弦垂度"""
 
     x = np.linspace(0.0, cable.W, cable.N + 1)
     chord = cable.H * (1.0 - x / cable.W)
@@ -46,7 +45,7 @@ def initial_shape(cable: CableParams, sag_ratio: float = 0.04) -> tuple[np.ndarr
 
 
 def _pack(x: np.ndarray, y: np.ndarray, fixed_x: bool) -> np.ndarray:
-    """把节点坐标打包成优化变量。fixed_x=True 时只优化 y。"""
+    """把节点坐标打包成优化变量。fixed_x=True 时只优化 y"""
 
     if fixed_x:
         return y[1:-1].copy()
@@ -54,7 +53,7 @@ def _pack(x: np.ndarray, y: np.ndarray, fixed_x: bool) -> np.ndarray:
 
 
 def _unpack(q: np.ndarray, cable: CableParams) -> tuple[np.ndarray, np.ndarray]:
-    """把优化变量还原为完整节点坐标，并补上两端固定点。"""
+    """把优化变量还原为完整节点坐标，并补上两端固定点"""
 
     if cable.fixed_x:
         x = np.linspace(0.0, cable.W, cable.N + 1)
@@ -69,6 +68,7 @@ def _unpack(q: np.ndarray, cable: CableParams) -> tuple[np.ndarray, np.ndarray]:
 
 
 def _interp_piecewise(x: np.ndarray, y: np.ndarray, xp: float) -> float:
+    """分段线性插值函数：估算给定 xp 处的高度 y"""
     xp = float(np.clip(xp, x[0], x[-1]))
     return float(np.interp(xp, x, y))
 
@@ -82,9 +82,8 @@ def total_potential_energy(
 ) -> float:
     """总势能函数。
 
-    钢缆自重按未伸长单元质量 R*l0 计算；弹性势能只统计拉伸量，
-    即钢缆只受拉不受压。若给定 rider_mass/rider_x，则额外加入人员
-    集中载荷的重力势能。
+    钢缆自重按未伸长单元质量 R*l0 计算；弹性势能只统计拉伸量，即钢缆只受拉不受压；
+    若给定 rider_mass/rider_x，则额外加入人员集中载荷的重力势能
     """
 
     x, y = _unpack(q, cable)
@@ -126,7 +125,7 @@ def solve_cable_shape(
 
     const = const or PhysicalConstants()
     solver = solver or SolverParams()
-
+    # 获取初值
     if initial is None or initial.x.size != cable.N + 1:
         x0, y0 = initial_shape(cable)
     else:

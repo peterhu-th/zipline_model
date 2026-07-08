@@ -1,5 +1,4 @@
 from __future__ import annotations
-
 from dataclasses import dataclass, field
 from typing import Generic, Hashable, TypeVar
 
@@ -20,4 +19,3 @@ class SimpleCache(Generic[T]):
 
     def clear(self) -> None:
         self.store.clear()
-

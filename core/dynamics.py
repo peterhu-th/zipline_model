@@ -1,10 +1,7 @@
 from __future__ import annotations
-
 from dataclasses import dataclass
-
 import numpy as np
 from scipy.integrate import solve_ivp
-
 from config.params import CableParams, PhysicalConstants, ResistanceParams, SolverParams
 from core.energy_cable import CableShape, solve_cable_shape
 from core.geometry import curvature, interp_y, max_sag, slope
@@ -12,7 +9,7 @@ from core.geometry import curvature, interp_y, max_sag, slope
 
 @dataclass
 class SimulationResult:
-    """一次滑行动力学仿真的汇总结果。"""
+    """一次滑行动力学仿真的汇总结果"""
 
     t: np.ndarray
     x: np.ndarray
@@ -28,15 +25,16 @@ class SimulationResult:
     max_decel: float
     T_max: float
     sag_max: float
+    arc_length: float
+    avg_speed: float
     feasible: bool
     message: str = ""
 
 
 class ShapeCache:
-    """准静态移动载荷缓存。
+    """准静态移动载荷缓存
 
-    动力学积分过程中，每到一个位置都要解一次载人静力索形。这里把位置按
-    cache_dx 分桶，并用上一次索形 warm start，避免重复求解导致计算过慢。
+    积分过程中，每到一个位置都要解一次静力索形。把位置按 cache_dx 分桶，并用上一次索形热启动
     """
 
     def __init__(self, cable: CableParams, const: PhysicalConstants, solver: SolverParams, mass: float):
@@ -75,10 +73,9 @@ def local_acceleration(
     xb_ratio: float,
     FB: float,
 ) -> float:
-    """计算给定位置和速度下的切向加速度。
+    """计算给定位置和速度下的切向加速度
 
-    驱动力为重力切向分量，阻力包括库仑摩擦、二次空气阻力、等效线性阻尼
-    和缓冲区内的恒定附加摩擦力。
+    驱动力为重力切向分量，阻力包括库仑摩擦、二次空气阻力、等效线性阻尼和缓冲区内的恒定摩擦力
     """
 
     yx = slope(shape, x)
@@ -114,18 +111,92 @@ def simulate_motion(
     ce = resistance.ce_default if ce is None else ce
     cache = ShapeCache(cable, const, solver, mass)
 
+    return _simulate_with_shape_provider(
+        cable,
+        const,
+        solver,
+        mass,
+        xb_ratio,
+        FB,
+        resistance,
+        v0,
+        v_limit,
+        a_safe,
+        mu,
+        kd,
+        ce,
+        cache.get,
+    )
+
+
+def simulate_motion_fixed_shape(
+    cable: CableParams,
+    const: PhysicalConstants,
+    solver: SolverParams,
+    mass: float,
+    xb_ratio: float,
+    FB: float,
+    resistance: ResistanceParams,
+    shape: CableShape,
+    v0: float = 0.05,
+    v_limit: float = 3.5,
+    a_safe: float = 3.0,
+    mu: float | None = None,
+    kd: float | None = None,
+    ce: float | None = None,
+) -> SimulationResult:
+    """固定索形动力学，用于和准静态移动载荷模型对照"""
+
+    mu = resistance.mu_default if mu is None else mu
+    kd = resistance.kd_default if kd is None else kd
+    ce = resistance.ce_default if ce is None else ce
+    return _simulate_with_shape_provider(
+        cable,
+        const,
+        solver,
+        mass,
+        xb_ratio,
+        FB,
+        resistance,
+        v0,
+        v_limit,
+        a_safe,
+        mu,
+        kd,
+        ce,
+        lambda _x: shape,
+    )
+
+
+def _simulate_with_shape_provider(
+    cable: CableParams,
+    const: PhysicalConstants,
+    solver: SolverParams,
+    mass: float,
+    xb_ratio: float,
+    FB: float,
+    resistance: ResistanceParams,
+    v0: float,
+    v_limit: float,
+    a_safe: float,
+    mu: float,
+    kd: float,
+    ce: float,
+    shape_at,
+) -> SimulationResult:
+    """按给定索形提供器执行统一动力学积分"""
+
     def rhs(_t: float, z: np.ndarray) -> np.ndarray:
         # 使用当前位置对应的准静态索形计算局部坡度和切向加速度。
         x = float(np.clip(z[0], 0.0, cable.W))
         v = max(float(z[1]), 0.0)
-        shape = cache.get(x)
+        shape = shape_at(x)
         yx = slope(shape, x)
         dxdt = v / np.sqrt(1.0 + yx * yx)
         dvdt = local_acceleration(x, v, shape, cable, const, mass, mu, kd, ce, xb_ratio, FB)
         return np.array([dxdt, dvdt])
 
     def terminal_event(_t: float, z: np.ndarray) -> float:
-        # 到达终点即停止积分。
         return float(z[0] - cable.W)
 
     terminal_event.terminal = True
@@ -156,7 +227,7 @@ def simulate_motion(
     T_max = 0.0
     sag_max_value = 0.0
     for i, (xi, vi) in enumerate(zip(x, v)):
-        shape = cache.get(float(xi))
+        shape = shape_at(float(xi))
         acc[i] = local_acceleration(float(xi), float(vi), shape, cable, const, mass, mu, kd, ce, xb_ratio, FB)
         T_max = max(T_max, shape.T_max)
         sag_max_value = max(sag_max_value, max_sag(shape, cable))
@@ -167,6 +238,8 @@ def simulate_motion(
     v_terminal = float(v[-1]) if reached else float("nan")
     max_decel = float(max(0.0, -np.min(acc))) if acc.size else 0.0
     max_accel = float(np.max(acc)) if acc.size else 0.0
+    arc_length = float(np.trapz(v, sol.t)) if sol.t.size > 1 else 0.0
+    avg_speed = arc_length / float(sol.t[-1]) if sol.t.size and sol.t[-1] > 0.0 else float("nan")
     feasible = reached and not stalled and v_terminal <= v_limit and max_decel <= a_safe
     return SimulationResult(
         t=sol.t,
@@ -183,6 +256,8 @@ def simulate_motion(
         max_decel=max_decel,
         T_max=float(T_max),
         sag_max=float(sag_max_value),
+        arc_length=arc_length,
+        avg_speed=float(avg_speed),
         feasible=feasible,
         message=str(sol.message),
     )

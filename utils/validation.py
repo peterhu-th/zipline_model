@@ -1,5 +1,4 @@
 from __future__ import annotations
-
 from config.params import CableParams
 
 
@@ -12,4 +11,3 @@ def validate_cable_params(cable: CableParams) -> None:
         raise ValueError("R, E, and A_c must be positive.")
     if cable.N < 3:
         raise ValueError("N must be at least 3.")
-

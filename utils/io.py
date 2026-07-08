@@ -1,9 +1,6 @@
 from __future__ import annotations
-
 from pathlib import Path
-
 import pandas as pd
-
 from config.params import OUTPUT_DIR
 
 
@@ -17,4 +14,3 @@ def write_table(df: pd.DataFrame, name: str) -> Path:
     path = OUTPUT_DIR / "tables" / name
     df.to_csv(path, index=False, encoding="utf-8-sig")
     return path
-

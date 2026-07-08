@@ -1,7 +1,5 @@
 from __future__ import annotations
-
 import argparse
-
 from config.params import Params
 from experiments import (
     exp01_convergence,
@@ -9,6 +7,7 @@ from experiments import (
     exp03_height_tension,
     exp04_rider_position,
     exp05_dynamic_model_compare,
+    exp06_resistance_sensitivity,
     exp07_braking_feasible_region,
     exp08_global_optimization,
 )
@@ -21,6 +20,7 @@ EXPERIMENTS = {
     "height_tension": exp03_height_tension.run,
     "rider_position": exp04_rider_position.run,
     "dynamic": exp05_dynamic_model_compare.run,
+    "resistance": exp06_resistance_sensitivity.run,
     "braking": exp07_braking_feasible_region.run,
 }
 
@@ -32,6 +32,7 @@ def run_quick(params: Params) -> None:
         "exp03_height_tension.csv": exp03_height_tension.run(params),
         "exp04_rider_position.csv": exp04_rider_position.run(params),
         "exp05_dynamic_model_compare.csv": exp05_dynamic_model_compare.run(params),
+        "exp06_resistance_sensitivity.csv": exp06_resistance_sensitivity.run(params),
     }
     for name, df in tables.items():
         path = write_table(df, name)

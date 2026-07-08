@@ -32,8 +32,6 @@ utils/
   plotting.py               图像保存辅助
   validation.py             参数合法性检查
 main.py                     统一运行入口
-method.md                   修订后的建模方法说明
-paper/main.tex              按原题顺序组织的 LaTeX 论文框架
 outputs/tables/             实验输出表格
 ```
 
