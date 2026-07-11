@@ -157,3 +157,28 @@ def plot_global_feasible_region(df: pd.DataFrame, name: str = "exp08_global_feas
     plt.ylabel("余长比例 eta")
     plt.grid(True, alpha=0.3)
     return save_current_figure(name)
+
+
+def plot_nsga2_pareto_front(df: pd.DataFrame, name: str = "exp09_nsga2_pareto_front.png") -> Path:
+    """绘制 NSGA-II 最终种群和 Pareto 候选"""
+
+    configure_chinese_font()
+    data = df.attrs.get("plot_population", df).copy()
+    colors = data["feasible"].map({True: "tab:green", False: "tab:red"}) if "feasible" in data.columns else "tab:blue"
+    plt.figure(figsize=(7, 4.5))
+    plt.scatter(data["score_speed_s_over_t"], data["max_braking_jerk"], c=colors, alpha=0.55, label="最终种群")
+    if not df.empty:
+        plt.scatter(
+            df["score_speed_s_over_t"],
+            df["max_braking_jerk"],
+            facecolors="none",
+            edgecolors="black",
+            linewidths=1.4,
+            s=90,
+            label="Pareto 候选",
+        )
+    plt.xlabel("沿索平均速度 s/t / (m/s)")
+    plt.ylabel("最大制动冲击度")
+    plt.grid(True, alpha=0.3)
+    plt.legend()
+    return save_current_figure(name)

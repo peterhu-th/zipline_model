@@ -10,6 +10,7 @@ from experiments import (
     exp06_resistance_sensitivity,
     exp07_braking_feasible_region,
     exp08_global_optimization,
+    exp09_nsga2_optimization,
 )
 from utils.experiment_runner import run_experiment_outputs
 from utils.plotting import (
@@ -19,12 +20,12 @@ from utils.plotting import (
     plot_static_distribution_curves,
     plot_braking_feasible_heatmap,
     plot_global_feasible_region,
+    plot_nsga2_pareto_front,
 )
 
 
-def experiment_specs(params: Params, limit_per_axis: int):
+def experiment_specs(params: Params, limit_per_axis: int, nsga_population: int, nsga_generations: int, seed: int):
     """集中维护所有实验的生成逻辑，供 main 和 quick 复用"""
-
     return {
         "convergence": {
             "label": "网格收敛性实验",
@@ -74,18 +75,27 @@ def experiment_specs(params: Params, limit_per_axis: int):
             "runner": lambda: exp08_global_optimization.run(params, limit_per_axis=limit_per_axis),
             "plotters": (plot_global_feasible_region,),
         },
+        "nsga2": {
+            "label": "NSGA-II 综合优化",
+            "table": "exp09_nsga2_optimization.csv",
+            "runner": lambda: exp09_nsga2_optimization.run(
+                params,
+                population_size=nsga_population,
+                generations=nsga_generations,
+                seed=seed,
+            ),
+            "plotters": (plot_nsga2_pareto_front,),
+        },
     }
 
 
 def run_spec(spec: dict) -> None:
     """按统一规则运行一个实验并生成交付物"""
-
     run_experiment_outputs(spec["label"], spec["table"], spec["runner"], spec["plotters"])
 
 
 def run_quick(specs: dict) -> None:
     """快速批量实验：运行前六个基础实验"""
-
     print("[开始] 快速批量实验")
     for key in ("convergence", "static_compare", "height_tension", "rider_position", "dynamic", "resistance"):
         run_spec(specs[key])
@@ -99,12 +109,15 @@ def main() -> None:
         "experiment",
         nargs="?",
         default="quick",
-        choices=["quick", "global"] + sorted(experiment_specs(params, 2)),
+        choices=["quick", "global"] + sorted(experiment_specs(params, 2, 12, 3, 42)),
         help="要运行的实验。quick 表示基础批量实验，global 是 global_optimization 的别名。",
     )
     parser.add_argument("--limit-per-axis", type=int, default=2, help="综合优化烟测时每个轴保留的网格数量。")
+    parser.add_argument("--nsga-population", type=int, default=12, help="NSGA-II 种群规模。")
+    parser.add_argument("--nsga-generations", type=int, default=3, help="NSGA-II 迭代代数。")
+    parser.add_argument("--seed", type=int, default=42, help="随机种子。")
     args = parser.parse_args()
-    specs = experiment_specs(params, args.limit_per_axis)
+    specs = experiment_specs(params, args.limit_per_axis, args.nsga_population, args.nsga_generations, args.seed)
 
     if args.experiment == "quick":
         run_quick(specs)
