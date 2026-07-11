@@ -21,6 +21,9 @@ def run_experiment_outputs(
     print(f"[完成] {label}，结果行数：{len(df)}")
     table_path = write_table(df, table_name)
     print(f"[写入表格] {table_path}")
+    for extra_name, extra_df in df.attrs.get("extra_tables", {}).items():
+        extra_path = write_table(extra_df, extra_name)
+        print(f"[写入附表] {extra_path}")
 
     for plotter in plotters or ():
         result = plotter(df)

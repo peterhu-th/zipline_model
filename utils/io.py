@@ -15,6 +15,9 @@ COLUMN_NAME_CN = {
     "arc_length_rel_error": "弧长相对误差",
     "T_max_rel_error": "最大张力相对误差",
     "sag_max_rel_error": "最大垂度相对误差",
+    "within_1_percent": "是否满足1%误差",
+    "recommended_N": "推荐微元数",
+    "case": "对比工况",
     "comparison_group": "对比组",
     "scenario": "对比场景",
     "reference_model": "参考模型",
@@ -36,11 +39,18 @@ COLUMN_NAME_CN = {
     "S_sag": "垂度相对敏感度",
     "rider_x": "载人水平位置",
     "rider_y": "载人处高度",
+    "y": "索形高度",
+    "sag": "垂度",
+    "tension": "张力",
     "reached_terminal": "是否到达终点",
-    "stalled": "是否中途滞留",
     "v_max": "最大速度",
     "x_vmax": "最大速度位置",
     "v_terminal": "终点速度",
+    "terminal_s": "终点下滑位移",
+    "terminal_v": "终点速度",
+    "terminal_a": "终点加速度",
+    "terminal_speed_safe": "是否满足终点限速",
+    "failure_reason": "失败原因",
     "travel_time": "滑行时间",
     "max_accel": "最大加速度",
     "max_decel": "最大减速度",
@@ -56,10 +66,25 @@ COLUMN_NAME_CN = {
     "eta": "余长比例",
     "L": "钢缆原长",
     "score_avg_speed": "平均速度评分",
+    "score_speed_s_over_t": "沿索平均速度目标",
+    "max_abs_jerk": "最大冲击度",
+    "max_braking_jerk": "最大制动冲击度",
     "v_T_30": "30kg终点速度",
     "v_T_80": "80kg终点速度",
     "v_max_30": "30kg最大速度",
     "v_max_80": "80kg最大速度",
+    "t": "时间",
+    "x": "水平位置",
+    "s": "下滑位移",
+    "v": "速度",
+    "accel": "加速度",
+    "jerk": "冲击度",
+    "feasible_count": "可行组合数",
+    "reached_count": "可达组合数",
+    "not_reached_count": "未到达组合数",
+    "terminal_speed_over_limit_count": "终点超速组合数",
+    "min_terminal_speed": "最低终点速度",
+    "reason": "原因分析",
 }
 
 
@@ -88,5 +113,5 @@ def ensure_output_dirs() -> None:
 def write_table(df: pd.DataFrame, name: str) -> Path:
     ensure_output_dirs()
     path = OUTPUT_DIR / "tables" / name
-    localize_table_columns(df).to_csv(path, index=False, encoding="utf-8-sig", float_format="%.4g")
+    localize_table_columns(df).to_csv(path, index=False, encoding="utf-8-sig", float_format="%.3e")
     return path

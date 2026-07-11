@@ -71,16 +71,15 @@ def plot_speed_position_curve(df: pd.DataFrame, name: str = "exp05_speed_positio
 
 
 def plot_motion_time_curves(df: pd.DataFrame) -> list[Path]:
-    """绘制不同体重下的 x-t、s-t、v-t、a-t 曲线"""
+    """绘制不同体重下的 s-t、v-t、a-t 曲线"""
 
     history = df.attrs.get("time_history")
     if history is None or history.empty:
         return []
     specs = [
-        ("x", "水平位置 x / m", "exp05_x_t_curve.png"),
         ("s", "下滑位移 s / m", "exp05_s_t_curve.png"),
         ("v", "速度 v / (m/s)", "exp05_v_t_curve.png"),
-        ("accel", "切向加速度 a / (m/s^2)", "exp05_a_t_curve.png"),
+        ("a", "切向加速度 a / (m/s^2)", "exp05_a_t_curve.png"),
     ]
     paths = []
     for column, ylabel, filename in specs:
@@ -92,6 +91,36 @@ def plot_motion_time_curves(df: pd.DataFrame) -> list[Path]:
         plt.ylabel(ylabel)
         plt.grid(True, alpha=0.3)
         plt.legend(title="体重")
+        paths.append(save_current_figure(filename))
+    return paths
+
+
+def plot_static_distribution_curves(df: pd.DataFrame) -> list[Path]:
+    """绘制空置/载人垂度和张力分布曲线"""
+
+    paths = []
+    specs = [
+        ("sag", "垂度 δ / m", "exp04_sag_distribution.png"),
+        ("tension", "张力 T / N", "exp04_tension_distribution.png"),
+    ]
+    for column, ylabel, filename in specs:
+        configure_chinese_font()
+        plt.figure(figsize=(7, 4.5))
+        for label, part in df.groupby("state"):
+            is_empty = str(label) == "空置状态"
+            plt.plot(
+                part["x"],
+                part[column],
+                label=str(label),
+                color="black" if is_empty else None,
+                linestyle="--" if is_empty else "-",
+                linewidth=2.4 if is_empty else 1.5,
+                zorder=5 if is_empty else 2,
+            )
+        plt.xlabel("水平位置 x / m")
+        plt.ylabel(ylabel)
+        plt.grid(True, alpha=0.3)
+        plt.legend()
         paths.append(save_current_figure(filename))
     return paths
 
@@ -120,7 +149,8 @@ def plot_global_feasible_region(df: pd.DataFrame, name: str = "exp08_global_feas
     configure_chinese_font()
     data = df.copy()
     colors = data["feasible"].map({True: "tab:green", False: "tab:red"})
-    sizes = 40 + 120 * data["score_avg_speed"].fillna(0.0) / max(float(data["score_avg_speed"].fillna(0.0).max()), 1e-12)
+    score_col = "score_speed_s_over_t" if "score_speed_s_over_t" in data.columns else "score_avg_speed"
+    sizes = 40 + 120 * data[score_col].fillna(0.0) / max(float(data[score_col].fillna(0.0).max()), 1e-12)
     plt.figure(figsize=(7, 4.5))
     plt.scatter(data["H"], data["eta"], c=colors, s=sizes, alpha=0.75)
     plt.xlabel("高度差 H / m")

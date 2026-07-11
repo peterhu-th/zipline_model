@@ -16,6 +16,7 @@ from utils.plotting import (
     plot_H_Tmax_curve,
     plot_H_delta_max_curve,
     plot_motion_time_curves,
+    plot_static_distribution_curves,
     plot_braking_feasible_heatmap,
     plot_global_feasible_region,
 )
@@ -44,10 +45,10 @@ def experiment_specs(params: Params, limit_per_axis: int):
             "plotters": (plot_H_Tmax_curve, plot_H_delta_max_curve),
         },
         "rider_position": {
-            "label": "载人位置影响实验",
-            "table": "exp04_rider_position.csv",
+            "label": "垂度和张力分布实验",
+            "table": "exp04_static_distribution.csv",
             "runner": lambda: exp04_rider_position.run(params),
-            "plotters": (),
+            "plotters": (plot_static_distribution_curves,),
         },
         "dynamic": {
             "label": "动力学模型对比实验",
